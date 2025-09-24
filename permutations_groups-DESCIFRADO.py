@@ -43,7 +43,6 @@ class DescifradorPermutacion:
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # --- Pestaña principal ---
         tab_main = ttk.Frame(notebook)
         notebook.add(tab_main, text="Descifrar")
 
@@ -74,12 +73,10 @@ class DescifradorPermutacion:
         self.salida_texto = tk.Text(tab_main, wrap="word", height=18, width=100, state="disabled")
         self.salida_texto.pack(padx=5, pady=5, fill="both", expand=True)
 
-        # Scrollbar
         scrollbar = ttk.Scrollbar(tab_main, command=self.salida_texto.yview)
         scrollbar.pack(side="right", fill="y")
         self.salida_texto.config(yscrollcommand=scrollbar.set)
 
-        # --- Pestaña Info ---
         tab_info = ttk.Frame(notebook)
         notebook.add(tab_info, text="ℹ️ Información")
         info = (

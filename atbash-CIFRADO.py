@@ -5,13 +5,20 @@ class CifradorAtbash:
     def __init__(self):
         self.alfabeto_mayusculas = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         self.alfabeto_minusculas = "abcdefghijklmnopqrstuvwxyz"
+        self.caracteres_espanoles = "ñÑáéíóúÁÉÍÓÚüÜ"
+    
+    def detectar_caracteres_espanoles(self, texto):
+        caracteres_encontrados = []
+        for caracter in texto:
+            if caracter in self.caracteres_espanoles:
+                if caracter not in caracteres_encontrados:
+                    caracteres_encontrados.append(caracter)
+        return caracteres_encontrados
     
     def preprocesar_texto(self, texto):
         texto_limpio = ""
         for caracter in texto:
-            if caracter == 'ñ' or caracter == 'Ñ':
-                continue
-            elif caracter.isalpha() or caracter.isdigit():
+            if caracter in self.alfabeto_mayusculas or caracter in self.alfabeto_minusculas or caracter.isdigit():
                 texto_limpio += caracter
         return texto_limpio
     
@@ -49,11 +56,9 @@ class InterfazCifrador:
         estilo.configure("TLabel", font=("Arial", 11))
         estilo.configure("Title.TLabel", font=("Arial", 16, "bold"))
 
-        # Contenedor principal con pestañas
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # ----- Pestaña Entrada / Salida -----
         tab_main = ttk.Frame(notebook)
         notebook.add(tab_main, text="Cifrado")
 
@@ -75,14 +80,12 @@ class InterfazCifrador:
         self.texto_cifrado = scrolledtext.ScrolledText(tab_main, width=90, height=4, font=("Consolas", 11))
         self.texto_cifrado.pack(pady=5, fill="x")
 
-        # ----- Pestaña Transformación -----
         tab_trans = ttk.Frame(notebook)
         notebook.add(tab_trans, text="Transformación paso a paso")
 
         self.texto_ejemplo = scrolledtext.ScrolledText(tab_trans, width=95, height=25, font=("Consolas", 10))
         self.texto_ejemplo.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # ----- Pestaña Información -----
         tab_info = ttk.Frame(notebook)
         notebook.add(tab_info, text="ℹ️ Información")
 
@@ -94,13 +97,46 @@ class InterfazCifrador:
         if not texto:
             messagebox.showwarning("Advertencia", "Por favor, ingresa texto para cifrar.")
             return
+        
+        caracteres_espanoles = self.cifrador.detectar_caracteres_espanoles(texto)
+        
+        if caracteres_espanoles:
+            mensaje = f"⚠️ ALFABETO INGLÉS DETECTADO\n\n"
+            mensaje += f"Se encontraron caracteres españoles que NO están en el alfabeto inglés:\n"
+            mensaje += f"• Caracteres: {', '.join(caracteres_espanoles)}\n\n"
+            mensaje += f"El alfabeto inglés solo incluye: A-Z (26 letras)\n"
+            mensaje += f"Estos caracteres serán ELIMINADOS del texto.\n\n"
+            mensaje += f"¿Deseas continuar con el cifrado eliminando estos caracteres?"
+            
+            respuesta = messagebox.askyesno("Caracteres no compatibles", mensaje)
+            
+            if not respuesta:
+                messagebox.showinfo("Cancelado", "Cifrado cancelado. Usa solo letras A-Z para el alfabeto inglés.")
+                return
+        
         texto_procesado = self.cifrador.preprocesar_texto(texto)
+        
+        if not texto_procesado:
+            messagebox.showwarning("Sin texto válido", 
+                                 "No quedó texto válido después de eliminar caracteres no compatibles.")
+            return
+        
         texto_cifrado = self.cifrador.cifrar(texto)
+        
         self.texto_procesado.delete("1.0", tk.END)
         self.texto_procesado.insert("1.0", texto_procesado)
+        
         self.texto_cifrado.delete("1.0", tk.END)
         self.texto_cifrado.insert("1.0", texto_cifrado)
+        
         self.mostrar_transformacion_completa(texto_procesado, texto_cifrado)
+        
+        if caracteres_espanoles:
+            info_msg = f"✅ Cifrado completado\n\n"
+            info_msg += f"Caracteres eliminados: {', '.join(caracteres_espanoles)}\n"
+            info_msg += f"Texto original: {len(texto)} caracteres\n"
+            info_msg += f"Texto procesado: {len(texto_procesado)} caracteres válidos"
+            messagebox.showinfo("Información del cifrado", info_msg)
 
     def mostrar_transformacion_completa(self, texto_procesado, texto_cifrado):
         if not texto_procesado:
@@ -126,14 +162,24 @@ class InterfazCifrador:
 
     def info_texto(self):
         return (
-            "🔐 CIFRADO ATBASH\n\n"
+            "🔐 CIFRADO ATBASH - ALFABETO INGLÉS\n\n"
             "El Atbash es un cifrado de sustitución simple:\n"
             "• A ↔ Z, B ↔ Y, C ↔ X, ...\n"
             "• a ↔ z, b ↔ y, c ↔ x, ...\n\n"
+            "ALFABETO INGLÉS (26 letras):\n"
+            "• MAYÚSCULAS: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z\n"
+            "• minúsculas: a b c d e f g h i j k l m n o p q r s t u v w x y z\n\n"
             "Características:\n"
             "✓ Mantiene mayúsculas y minúsculas\n"
-            "✓ Los números no cambian\n"
-            "✓ Espacios y signos se eliminan\n"
+            "✓ Los números no cambian (0-9)\n"
+            "✓ Espacios y signos de puntuación se eliminan\n"
+            "❌ NO acepta: Ñ, acentos (á,é,í,ó,ú), diéresis (ü)\n\n"
+            "ADVERTENCIA:\n"
+            "Si introduces caracteres españoles (ñ, á, é, etc.),\n"
+            "el programa te avisará y los eliminará del texto.\n\n"
+            "MAPEO COMPLETO:\n"
+            "A→Z  B→Y  C→X  D→W  E→V  F→U  G→T  H→S  I→R  J→Q  K→P  L→O  M→N\n"
+            "N→M  O→L  P→K  Q→J  R→I  S→H  T→G  U→F  V→E  W→D  X→C  Y→B  Z→A\n"
         )
 
 def main():
