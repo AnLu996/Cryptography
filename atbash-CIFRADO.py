@@ -5,21 +5,24 @@ class CifradorAtbash:
     def __init__(self):
         self.alfabeto_mayusculas = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         self.alfabeto_minusculas = "abcdefghijklmnopqrstuvwxyz"
-        self.caracteres_espanoles = "ñÑáéíóúÁÉÍÓÚüÜ"
+        self.mapa_normalizacion = {
+            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u',
+            'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ü': 'U',
+            'ñ': 'n', 'Ñ': 'N'
+        }
     
-    def detectar_caracteres_espanoles(self, texto):
-        caracteres_encontrados = []
-        for caracter in texto:
-            if caracter in self.caracteres_espanoles:
-                if caracter not in caracteres_encontrados:
-                    caracteres_encontrados.append(caracter)
-        return caracteres_encontrados
+    def normalizar_caracter(self, caracter):
+        return self.mapa_normalizacion.get(caracter, caracter)
     
     def preprocesar_texto(self, texto):
         texto_limpio = ""
         for caracter in texto:
-            if caracter in self.alfabeto_mayusculas or caracter in self.alfabeto_minusculas or caracter.isdigit():
-                texto_limpio += caracter
+            caracter_normalizado = self.normalizar_caracter(caracter)
+            
+            if (caracter_normalizado in self.alfabeto_mayusculas or 
+                caracter_normalizado in self.alfabeto_minusculas or 
+                caracter_normalizado.isdigit()):
+                texto_limpio += caracter_normalizado
         return texto_limpio
     
     def cifrar(self, texto_plano):
@@ -98,27 +101,18 @@ class InterfazCifrador:
             messagebox.showwarning("Advertencia", "Por favor, ingresa texto para cifrar.")
             return
         
-        caracteres_espanoles = self.cifrador.detectar_caracteres_espanoles(texto)
-        
-        if caracteres_espanoles:
-            mensaje = f"⚠️ ALFABETO INGLÉS DETECTADO\n\n"
-            mensaje += f"Se encontraron caracteres españoles que NO están en el alfabeto inglés:\n"
-            mensaje += f"• Caracteres: {', '.join(caracteres_espanoles)}\n\n"
-            mensaje += f"El alfabeto inglés solo incluye: A-Z (26 letras)\n"
-            mensaje += f"Estos caracteres serán ELIMINADOS del texto.\n\n"
-            mensaje += f"¿Deseas continuar con el cifrado eliminando estos caracteres?"
-            
-            respuesta = messagebox.askyesno("Caracteres no compatibles", mensaje)
-            
-            if not respuesta:
-                messagebox.showinfo("Cancelado", "Cifrado cancelado. Usa solo letras A-Z para el alfabeto inglés.")
-                return
+        caracteres_normalizados = []
+        for caracter in texto:
+            if caracter in self.cifrador.mapa_normalizacion:
+                normalizacion = f"{caracter}→{self.cifrador.mapa_normalizacion[caracter]}"
+                if normalizacion not in caracteres_normalizados:
+                    caracteres_normalizados.append(normalizacion)
         
         texto_procesado = self.cifrador.preprocesar_texto(texto)
         
         if not texto_procesado:
             messagebox.showwarning("Sin texto válido", 
-                                 "No quedó texto válido después de eliminar caracteres no compatibles.")
+                                 "No quedó texto válido después del procesamiento.")
             return
         
         texto_cifrado = self.cifrador.cifrar(texto)
@@ -130,10 +124,11 @@ class InterfazCifrador:
         self.texto_cifrado.insert("1.0", texto_cifrado)
         
         self.mostrar_transformacion_completa(texto_procesado, texto_cifrado)
-        
-        if caracteres_espanoles:
-            info_msg = f"✅ Cifrado completado\n\n"
-            info_msg += f"Caracteres eliminados: {', '.join(caracteres_espanoles)}\n"
+
+        if caracteres_normalizados:
+            info_msg = f"✅ Cifrado completado con normalización\n\n"
+            info_msg += f"Caracteres normalizados (tildes eliminadas):\n"
+            info_msg += f"• {', '.join(caracteres_normalizados)}\n\n"
             info_msg += f"Texto original: {len(texto)} caracteres\n"
             info_msg += f"Texto procesado: {len(texto_procesado)} caracteres válidos"
             messagebox.showinfo("Información del cifrado", info_msg)
@@ -162,21 +157,28 @@ class InterfazCifrador:
 
     def info_texto(self):
         return (
-            "🔐 CIFRADO ATBASH - ALFABETO INGLÉS\n\n"
+            "CIFRADO ATBASH - ALFABETO INGLÉS\n\n"
             "El Atbash es un cifrado de sustitución simple:\n"
             "• A ↔ Z, B ↔ Y, C ↔ X, ...\n"
             "• a ↔ z, b ↔ y, c ↔ x, ...\n\n"
             "ALFABETO INGLÉS (26 letras):\n"
             "• MAYÚSCULAS: A B C D E F G H I J K L M N O P Q R S T U V W X Y Z\n"
             "• minúsculas: a b c d e f g h i j k l m n o p q r s t u v w x y z\n\n"
+            "MANEJO DE CARACTERES ESPAÑOLES:\n"
+            "✓ TILDES se ELIMINAN automáticamente:\n"
+            "  • á,é,í,ó,ú → a,e,i,o,u\n"
+            "  • Á,É,Í,Ó,Ú → A,E,I,O,U\n"
+            "  • ü,Ü → u,U\n"
+            "  • ñ,Ñ → n,N\n\n"
             "Características:\n"
             "✓ Mantiene mayúsculas y minúsculas\n"
             "✓ Los números no cambian (0-9)\n"
             "✓ Espacios y signos de puntuación se eliminan\n"
-            "❌ NO acepta: Ñ, acentos (á,é,í,ó,ú), diéresis (ü)\n\n"
-            "ADVERTENCIA:\n"
-            "Si introduces caracteres españoles (ñ, á, é, etc.),\n"
-            "el programa te avisará y los eliminará del texto.\n\n"
+            "✓ TILDES se eliminan automáticamente\n\n"
+            "EJEMPLOS:\n"
+            "• 'NIÑO' → 'NINO' → 'MRML'\n"
+            "• 'María' → 'Maria' → 'Nzirz'\n"
+            "• 'Jesús' → 'Jesus' → 'Qvhfh'\n\n"
             "MAPEO COMPLETO:\n"
             "A→Z  B→Y  C→X  D→W  E→V  F→U  G→T  H→S  I→R  J→Q  K→P  L→O  M→N\n"
             "N→M  O→L  P→K  Q→J  R→I  S→H  T→G  U→F  V→E  W→D  X→C  Y→B  Z→A\n"
@@ -189,3 +191,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
